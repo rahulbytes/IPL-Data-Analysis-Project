@@ -57,8 +57,6 @@ This repository contains SQL queries for analyzing cricket match data. These que
 - These predictions are based on historical data and should be used as a reference for analysis purposes only. Actual outcomes may vary.
 - Data accuracy and completeness may influence the accuracy of predictions.
 
-**Author**: [Your Name]
+**Author**: [Rahul Dey]
 
-**Date**: [Date]
-
-**Contact**: [Your Contact Information]
+**Date**: [17-03-2024]
