@@ -1,0 +1,226 @@
+--Tables:
+SELECT * FROM dim_match_summary;
+SELECT * FROM dim_players;
+SELECT * FROM fact_batting;
+SELECT * FROM fact_bowling;
+
+--Top 10 batsmen based on past 3 years total runs scored.
+SELECT * FROM 
+(SELECT DENSE_RANK()OVER(ORDER BY SUM(runs)DESC)AS rnk,
+batsman_name, SUM(runs)AS total_runs_scored
+FROM fact_batting
+GROUP BY 2)t1
+WHERE rnk<11;
+
+--Top 10 batsmen based on past 3 years batting average. (min 60 balls faced in each season)
+WITH my_cte AS
+(SELECT batsman_name, EXTRACT(YEAR FROM matchdate)AS season, 
+SUM(CASE WHEN out_or_not_out = 'out' THEN runs END)AS total_runs_scored,
+SUM(balls)AS total_balls_played, COUNT(CASE WHEN out_or_not_out = 'out' THEN runs END)AS num_of_out
+FROM fact_batting b
+JOIN dim_match_summary dms ON dms.match_id = b.match_id
+GROUP BY batsman_name, season
+HAVING SUM(balls)>=60
+ORDER BY batsman_name)
+
+SELECT batsman_name, ROUND(SUM(total_runs_scored)/SUM(num_of_out),2) AS Batting_Average
+FROM my_cte
+GROUP BY batsman_name 
+HAVING COUNT(DISTINCT season)=3
+ORDER BY 2 DESC
+LIMIT 10;
+
+--Top 10 batsmen based on past 3 years strike rate (min 60 balls faced in each season)
+SELECT batsman_name, ROUND(AVG(avg_strike_rate),2)AS Strike_rate FROM
+(SELECT batsman_name, EXTRACT(YEAR FROM matchdate)AS season,
+ROUND(AVG(strike_rate),2)AS AVG_Strike_Rate FROM fact_batting b
+JOIN dim_match_summary dms ON dms.match_id = b.match_id
+GROUP BY batsman_name, season
+ORDER BY batsman_name)t1
+GROUP BY batsman_name
+HAVING COUNT(DISTINCT season)=3
+ORDER BY 2 DESC
+LIMIT 10;
+
+--Top 10 bowlers based on past 3 years total wickets taken.
+SELECT * FROM 
+(SELECT DENSE_RANK()OVER(ORDER BY SUM(wickets)DESC)AS Rnk,
+bowler_name, SUM(wickets)AS wickets_taken FROM fact_bowling 
+GROUP BY bowler_name)t1
+WHERE Rnk<11;
+
+--Top 10 bowlers based on past 3 years bowling average. (min 60 balls bowled in each season)
+SELECT bowler_name, (SUM(runs)/SUM(wickets)) AS bowling_average FROM fact_bowling
+GROUP BY bowler_name
+HAVING SUM(wickets)>0
+ORDER BY 2
+LIMIT 10;
+
+--Top 10 bowlers based on past 3 years economy rate. (min 60 balls bowled in each season)
+SELECT bowler_name, ROUND(AVG(avg_economy),2)AS economy FROM 
+(SELECT bowler_name,EXTRACT(YEAR FROM matchdate)AS Season, (SUM(overs)*6)AS balls,
+AVG(economy)AS avg_economy FROM fact_bowling b
+JOIN dim_match_summary dms ON dms.match_id = b.match_id
+GROUP BY 1,2
+HAVING (SUM(overs)*6)>=60
+ORDER BY 1) t1
+GROUP BY bowler_name
+HAVING COUNT(DISTINCT Season)=3
+ORDER BY economy
+LIMIT 10;
+
+--Top 5 batsmen based on past 3 years boundary % (fours and sixes).
+SELECT batsman_name, ROUND(AVG(boundary_percentage),2)AS boundaries_percentage FROM
+(SELECT batsman_name, EXTRACT(YEAR FROM matchdate)AS Season,
+SUM(fours+sixes)AS Total_boundaries, SUM(balls)AS balls_played,
+((SUM(fours+sixes)*100)/SUM(balls))AS boundary_percentage
+FROM fact_batting b
+JOIN dim_match_summary dms ON dms.match_id = b.match_id
+WHERE balls >0 
+GROUP BY 1,2)t1
+GROUP BY batsman_name
+HAVING COUNT(DISTINCT Season)=3
+ORDER BY 2 DESC
+LIMIT 5;
+
+--Top 5 bowlers based on past 3 years dot ball %.
+SELECT bowler_name, AVG(dot_balls_avg)AS dot_balls_avg FROM
+(SELECT bowler_name, EXTRACT(YEAR FROM matchdate)AS Season,
+ROUND(SUM(overs*6))AS total_balls, SUM(zeros)AS total_dot_balls,
+(SUM(zeros)*100/(SUM(overs*6)))AS dot_balls_avg
+FROM fact_bowling b
+JOIN dim_match_summary dms ON dms.match_id = b.match_id
+GROUP BY bowler_name, Season
+)t1
+GROUP BY 1 
+HAVING COUNT(DISTINCT Season)=3
+ORDER BY 2 DESC
+LIMIT 5;
+
+--Top 4 teams based on past 3 years winning %.
+WITH my_cte1 AS
+(SELECT balling_team AS team_name, COUNT(*)AS num_of_matches_bat
+FROM dim_match_summary
+GROUP BY 1),
+my_cte2 AS
+(SELECT batting_team AS team_name, COUNT(*)AS num_of_matches_ball
+FROM dim_match_summary
+GROUP BY 1),
+my_cte3 AS
+(SELECT winner AS team_name, COUNT(*)AS num_of_matches_won
+FROM dim_match_summary
+GROUP BY 1)
+
+SELECT team_name, (num_of_matches_bat+
+num_of_matches_ball)AS total_matches_played, num_of_matches_won,
+ROUND(num_of_matches_won*100.0/(num_of_matches_bat+num_of_matches_ball),2)AS winning_average
+FROM my_cte1
+JOIN my_cte2 USING(team_name)
+JOIN my_cte3 USING(team_name)
+ORDER BY 4 DESC
+LIMIT 4;
+
+--Top 2 teams with the highest number of wins achieved by chasing targets over the past 3 years.
+SELECT * FROM
+(SELECT DENSE_RANK()OVER(ORDER BY SUM(CASE WHEN balling_team = winner THEN 1 ELSE 0 END)DESC)as RNK,
+balling_team,SUM(CASE WHEN balling_team = winner THEN 1 ELSE 0 END)AS wins
+FROM dim_match_summary
+GROUP BY 2
+)t1
+WHERE RNK<3;
+
+
+--Prediction for 2024--
+
+--Orange and Purple Cap Players for 2024
+--(Orange Cap is given to player who scores the highest total runs in the Season.)
+--Let's find the winner and the runners-up upto 3.
+
+WITH cte AS
+(SELECT batsman_name, 
+COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM matchdate)= 2021 THEN runs END),0)AS Runs_in_21,
+COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM matchdate)= 2022 THEN runs END),0)AS Runs_in_22,
+COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM matchdate)= 2023 THEN runs END),0)AS Runs_in_23,
+SUM(runs)AS total_runs_scored, ROUND(AVG(strike_rate),2)AS avg_strike_rate,
+(SUM(runs))/(COUNT(CASE WHEN out_or_not_out = 'out' THEN 1 ELSE 0 END))AS batting_average
+FROM fact_batting f
+JOIN dim_match_summary dms ON dms.match_id = f.match_id
+GROUP BY 1 
+ORDER BY 4 DESC, 6 DESC, 7 DESC
+),
+
+--Calculating the Growth% Year by Year
+cte2 AS
+(SELECT batsman_name,runs_in_21,((runs_in_22-runs_in_21)*100/runs_in_21)AS diff_22_21_percent,runs_in_22,
+((runs_in_23-runs_in_22)*100/runs_in_22)AS diff_23_22_percent,runs_in_23,
+avg_strike_rate, batting_average
+FROM cte
+WHERE runs_in_21 <>0 AND runs_in_22 <>0 AND runs_in_23 <>0)
+
+--Selecting only top 5 players who are on an constant growth track
+SELECT * FROM cte2 
+WHERE runs_in_22>runs_in_21 AND runs_in_23>runs_in_22 
+ORDER BY runs_in_23 DESC
+LIMIT 5; 
+--In my opinion these are the players who can become an great contender for upcoming season for orange cap.
+
+
+--Purple Cap contendors for 2024 Season--
+--(Purple cap is given to players who take the most wickets)
+WITH my_cte AS
+(SELECT bowler_name, SUM(overs*6)AS overs_balled ,
+ SUM(wickets)AS total_wickets, 
+ SUM(CASE WHEN EXTRACT(YEAR FROM matchdate)=2021 THEN wickets END)AS wickets_21,
+ SUM(CASE WHEN EXTRACT(YEAR FROM matchdate)=2022 THEN wickets END)AS wickets_22,
+ SUM(CASE WHEN EXTRACT(YEAR FROM matchdate)=2023 THEN wickets END)AS wickets_23,
+ ROUND(SUM(overs*6)/SUM(wickets),2)AS wicket_taking_percentage
+ FROM fact_bowling f
+ JOIN dim_match_summary dms ON dms.match_id = f.match_id
+GROUP BY bowler_name
+ HAVING SUM(overs) <>0 AND SUM(wickets) <>0
+ORDER BY total_wickets DESC),
+
+my_cte2 AS
+(SELECT MAX(wickets_21)AS max_21 ,MAX(wickets_22)AS max_22,MAX(wickets_23)AS max_23 FROM my_cte)
+
+SELECT bowler_name, SUM(total_wickets)AS total_wickets,
+ SUM(wicket_taking_percentage)AS wicket_taking_percentage,
+ SUM(CASE WHEN wickets_21=  max_21 THEN 1
+					   		 WHEN wickets_22= max_22 THEN 1 
+					   		 WHEN wickets_23= max_23 THEN 1 ELSE 0 END) AS purple_cap FROM my_cte, my_cte2
+GROUP BY 1
+ORDER BY 4 DESC, 2 DESC, 3 DESC
+LIMIT 5;
+
+--Top 4 qualifying teams predictions for 2024
+WITH my_cte AS
+(SELECT * FROM
+(SELECT batting_team, balling_team, winner, 
+DENSE_RANK()OVER(PARTITION BY EXTRACT(YEAR FROM matchdate)ORDER BY matchdate DESC)AS rnk,
+matchdate, EXTRACT(YEAR FROM matchdate)AS Season FROM dim_match_summary)t1
+WHERE rnk <=4), 
+my_cte2 AS 
+(SELECT batting_team AS team, COUNT(1)AS num FROM my_cte GROUP BY 1
+UNION ALL
+SELECT balling_team AS team, COUNT(1)AS num FROM my_cte GROUP BY 1)
+ 
+SELECT team,SUM(num)AS matches FROM my_cte2 
+GROUP BY team
+ORDER BY matches DESC
+LIMIT 5
+-- These are the teams which have the highest number of chances in securing a position in the Top 4.
+
+--Winner and runner-up
+SELECT winner, COUNT(1)AS num_of_wins FROM 
+(SELECT EXTRACT(YEAR FROM matchdate)AS season,
+ ROW_NUMBER()OVER(PARTITION BY EXTRACT(YEAR FROM matchdate) ORDER BY matchdate DESC)AS rw,
+* FROM dim_match_summary
+ORDER BY matchdate DESC)t1
+WHERE rw = 1
+GROUP BY 1
+--As per the last 3 years data we can say Superkings and Titans will be having a great battle for the 2024 Cup.
+ 
+
+
+
+
