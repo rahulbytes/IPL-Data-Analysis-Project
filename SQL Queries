@@ -219,6 +219,88 @@ ORDER BY matchdate DESC)t1
 WHERE rw = 1
 GROUP BY 1
 --As per the last 3 years data we can say Superkings and Titans will be having a great battle for the 2024 Cup.
+
+###My Picks
+--Pick your team selecting the Best 11 players based on their positions, 3 years performance data and additional research
+--We need to have 4 batsman (2 openers, 1 top_order & 1 middle-orders), 
+--4 baller(2 spin and 2 fast baller),
+--1 Wicket Keeper, 
+--2 All-Rounders(2 Bowling Allrounder)
+
+--First let's find some proper batsmans who have got good total runs throught the last three seasons:
+WITH my_cte AS
+((SELECT batsman_name AS player_name, SUM(runs)AS runs_scored, COUNT(*)AS matches_played, playing_role
+FROM fact_batting fb
+ JOIN dim_players dp ON dp.name = fb.batsman_name
+ WHERE playing_role = 'Opening Batter'
+GROUP BY 1,4
+ORDER BY 2 DESC
+LIMIT 2)
+UNION ALL 
+(SELECT batsman_name AS player_name, SUM(runs)AS runs_scored, COUNT(*)AS matches_played, playing_role
+FROM fact_batting fb
+ JOIN dim_players dp ON dp.name = fb.batsman_name
+ WHERE playing_role = 'Top order Batter'
+GROUP BY 1,4
+ORDER BY 2 DESC
+LIMIT 1)
+ UNION ALL
+(SELECT batsman_name AS player_name, SUM(runs)AS runs_scored, COUNT(*)AS matches_played, playing_role
+FROM fact_batting fb
+ JOIN dim_players dp ON dp.name = fb.batsman_name
+ WHERE playing_role = 'Middle order Batter'
+GROUP BY 1,4
+ORDER BY 2 DESC
+LIMIT 1)
+ UNION ALL
+( SELECT batsman_name AS player_name, SUM(runs)AS runs_scored, COUNT(*)AS matches_played, playing_role
+FROM fact_batting fb
+ JOIN dim_players dp ON dp.name = fb.batsman_name
+ WHERE playing_role = 'Wicketkeeper Batter'
+GROUP BY 1,4
+ORDER BY 2 DESC
+LIMIT 1)
+ UNION ALL 
+(SELECT bowler_name AS player_name, SUM(wickets)AS total_wickets, COUNT(*)AS matches_played, playing_role
+FROM fact_bowling fb
+ JOIN dim_players dp ON dp.name = fb.bowler_name
+ WHERE playing_role = 'Bowling Allrounder'
+GROUP BY 1,4
+ORDER BY 2 DESC
+LIMIT 2)
+UNION ALL
+(
+SELECT bowler_name AS player_name, SUM(wickets)AS total_wickets, COUNT(*)AS matches_played, playing_role
+FROM fact_bowling fb
+ JOIN dim_players dp ON dp.name = fb.bowler_name
+ WHERE playing_role = 'Bowler'
+GROUP BY 1,4
+ORDER BY 2 DESC
+LIMIT 4
+))
+SELECT player_name , playing_role FROM my_cte
+
+--Pick your top 3 all-rounders
+WITH bowling AS
+(SELECT bowler_name AS name, SUM(wickets)AS total_wickets
+FROM fact_bowling fb
+JOIN dim_players dm ON dm.name = fb.bowler_name
+WHERE playing_role IN ('Allrounder', 'Bowling Allrounder','Batting Allrounder' )
+GROUP BY 1
+),
+batsman AS
+(SELECT batsman_name AS name, SUM(runs)AS total_runs
+FROM fact_batting fb
+JOIN dim_players dm ON dm.name = fb.batsman_name
+WHERE playing_role IN ('Allrounder', 'Bowling Allrounder','Batting Allrounder' )
+GROUP BY 1
+)
+SELECT batsman.name, total_wickets, total_runs FROM batsman 
+JOIN bowling ON bowling.name = batsman.name
+WHERE total_wickets >= 30  AND total_runs >= 300
+ORDER BY 3 DESC
+LIMIT 3;
+--These should be my top 3 picks for all rounders specifically.
  
 
 
