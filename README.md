@@ -60,8 +60,13 @@ This repository contains SQL queries for analyzing cricket match data. These que
 **Author**: [Rahul Dey]
 
 **Date**: [17-03-2024]
+<img width="550" alt="Screenshot 2024-04-04 134939" src="https://github.com/rahulbytes/IPL-Data-Analysis-Project/assets/142666454/642f73d3-a1b2-4fb4-91dd-08986d8d834d">
 
-<img width="550" alt="Screenshot 2024-04-04 134939" src="https://github.com/rahulbytes/IPL-Data-Analysis-Project/assets/142666454/622d0e89-44e0-48a7-ae04-6e226a95<img width="554" alt="Screenshot 2024-04-04 135020" <img width="551" alt="Screenshot 2024-04-04 135051" src="https://github.com/rahulbytes/IPL-Data-Analysis-Project/assets/142666454/06147086-c55b-4da6-b554-704fe5d6d6d8">
-src="https://github.com/rahulbytes/IPL-Data-Analysis-Project/assets/142666454/011e84b6-49fb-43fd-9bce-b30bd9656909">
-92e6">
-<img width="548" alt="Screenshot 2024-04-04 142939" src="https://github.com/rahulbytes/IPL-Data-Analysis-Project/assets/142666454/6422d2f7-670a-4a11-af9b-03386545b8e0">
+
+<img width="554" alt="Screenshot 2024-04-04 135020" src="https://github.com/rahulbytes/IPL-Data-Analysis-Project/assets/142666454/8f411ddb-e253-4688-83fb-7508ab440216">
+
+<img width="551" alt="Screenshot 2024-04-04 135051" src="https://github.com/rahulbytes/IPL-Data-Analysis-Project/assets/142666454/080e0303-20ec-4286-9bdf-c0af912e4c50">
+
+<img width="548" alt="Screenshot 2024-04-04 142939" src="https://github.com/rahulbytes/IPL-Data-Analysis-Project/assets/142666454/31b88872-b270-41df-94f0-c799b752de25">
+
+
